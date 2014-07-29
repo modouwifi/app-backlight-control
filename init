@@ -10,13 +10,13 @@ APPS_CONFIG_DIR="/data/conf"
 LAUNCHER_CONFIG_DIR="$APPS_CONFIG_DIR/launcher/conf.d"
 LAUNCHER_CONFIG_FILE="$LAUNCHER_CONFIG_DIR/$PROGRAM_NAME.conf"
 
-ICON="normal.png"
-PRESSED_ICON="pressed.png"
+ICON="appicon_backlight_normal.png"
+PRESSED_ICON="appicon_backlight_pressed.png"
 
 PID_FILE="$CURWDIR/$PROGRAM_NAME.pid"
 PKILL_BIN="/usr/bin/pkill"
 INSTALL_BIN="/usr/bin/install"
-REMOVE="/usr/bin/rm -f"
+REMOVE="/bin/rm -f"
 
 usage() {
     echo "ERROR: action missing"
