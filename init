@@ -17,6 +17,8 @@ PID_FILE="$CURWDIR/$PROGRAM_NAME.pid"
 PKILL_BIN="/usr/bin/pkill"
 INSTALL_BIN="/usr/bin/install"
 REMOVE="/bin/rm -f"
+LUA_BIN="/system/bin/lua"
+LUA_SCRIPT_PATH="/system/share/lua/5.1/tp_entry.lua"
 
 usage() {
     echo "ERROR: action missing"
@@ -53,14 +55,23 @@ uninstall() {
     $REMOVE "$LAUNCHER_CONFIG_FILE"
 }
 
-relase_backlight() {
-    RC = $(lua /system/share/lua/5.1/tp_entry.lua sys_api.release_backlight)
-    echo $RC 
+release_backlight() {
+    RC=$($LUA_BIN $LUA_SCRIPT_PATH sys_api.release_backlight)
+    echo -n $RC 
 }
 
 lock_backlight() {
-    RC = $(lua /system/share/lua/5.1/tp_entry.lua sys_api.lock_backlight)
-    echo $RC 
+    RC=$($LUA_BIN $LUA_SCRIPT_PATH sys_api.lock_backlight)
+    echo -n $RC 
+}
+
+backlight_on() {
+    RC=$($LUA_BIN $LUA_SCRIPT_PATH sys_api.wakeup_backlight)
+    echo -n $RC
+}
+
+backlight_off() {
+    echo -n '{"msg": "falilure", "code": -1}'
 }
 
 # main
@@ -84,9 +95,13 @@ case "$1" in
     "config" )
         config;;
     "release_backlight" )
-        relase_backlight;;
+        release_backlight;;
     "lock_backlight" )
         lock_backlight;;
+    "backlight_on" )
+        backlight_on;;
+    "backlight_off" )
+        backlight_off;;
     * )
         usage ;;
 esac
