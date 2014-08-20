@@ -53,6 +53,16 @@ uninstall() {
     $REMOVE "$LAUNCHER_CONFIG_FILE"
 }
 
+relase_backlight() {
+    RC = $(lua /system/share/lua/5.1/tp_entry.lua sys_api.release_backlight)
+    echo $RC 
+}
+
+lock_backlight() {
+    RC = $(lua /system/share/lua/5.1/tp_entry.lua sys_api.lock_backlight)
+    echo $RC 
+}
+
 # main
 if [ $# -lt 1 ]; then
     usage
@@ -71,6 +81,12 @@ case "$1" in
         config;;
     "uninstall" )
         uninstall;;
+    "config" )
+        config;;
+    "release_backlight" )
+        relase_backlight;;
+    "lock_backlight" )
+        lock_backlight;;
     * )
         usage ;;
 esac
