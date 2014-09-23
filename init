@@ -20,6 +20,8 @@ REMOVE="/bin/rm -f"
 LUA_BIN="/system/bin/lua"
 LUA_SCRIPT_PATH="/system/share/lua/5.1/tp_entry.lua"
 
+INTERVAL="$CURWDIR/interval.conf";
+
 usage() {
     echo "ERROR: action missing"
     echo "syntax: $0 <start|stop|restart|status|config|install|uninstall>"
@@ -38,7 +40,8 @@ stop() {
     fi
 }
 
-config() {
+install() 
+{
     echo "{" > "$PROGRAM_NAME.conf"
     echo "\"name\" :  \"$TITLE\"," >> "$PROGRAM_NAME.conf"
     echo "\"icon\" : \"$CURWDIR/$ICON\"," >> "$PROGRAM_NAME.conf"
@@ -49,6 +52,9 @@ config() {
 
     $INSTALL_BIN -d $LAUNCHER_CONFIG_DIR
     $INSTALL_BIN "$PROGRAM_NAME.conf" "$LAUNCHER_CONFIG_FILE"
+    
+    code=`basename $CURWDIR`;
+    /bin/sed -ie "s/data\/apps\/backlight/data\/apps\/$code/g" $CURWDIR/custom.conf;
 }
 
 uninstall() {
@@ -58,20 +64,52 @@ uninstall() {
 release_backlight() {
     RC=$($LUA_BIN $LUA_SCRIPT_PATH sys_api.release_backlight)
     echo -n $RC 
+
+    [ -f $CUSTOM_CONFIG_FILE ] && /bin/sed -ie "s/\"content\": \"屏幕长亮\"\,/\"content\": \"自动熄灭\"\,/g" $CUSTOM_CONFIG_FILE;
+    pid=`ps |grep custom|grep -v grep|awk '{print $1}'`;
+    kill -SIGUSR1 $pid;
 }
 
 lock_backlight() {
     RC=$($LUA_BIN $LUA_SCRIPT_PATH sys_api.lock_backlight)
     echo -n $RC 
+
+    [ -f $CUSTOM_CONFIG_FILE ] && /bin/sed -ie "s/\"content\": \"自动熄灭\"\,/\"content\": \"屏幕长亮\"\,/g" $CUSTOM_CONFIG_FILE;
+    pid=`ps |grep custom|grep -v grep|awk '{print $1}'`;
+    kill -SIGUSR1 $pid;
 }
 
 backlight_on() {
     RC=$($LUA_BIN $LUA_SCRIPT_PATH sys_api.wakeup_backlight)
     echo -n $RC
+
+    pid=`ps |grep custom|grep -v grep|awk '{print $1}'`;
+    kill -SIGUSR1 $pid;
 }
 
 backlight_off() {
     echo -n '{"msg": "falilure", "code": -1}'
+}
+
+config()
+{
+    /bin/input-text "" "间隔时间（单位秒）" "$INTERVAL" 1 10;
+    sec=`cat $INTERVAL`;
+    line=`echo $sec|grep "[^0-9]"|wc -l`;
+    if [ $line -eq 0 ]; then
+        pid=`ps|grep blcontrol|grep -v grep|awk '{print $1}'`;
+        [ "$sec" != "" ] && nvram_set 2860 BLtime $sec;
+        res=$?;
+        if [ $res -eq 0 ]; then
+            kill $pid;
+            /bin/blcontrol -t $sec -s NULL &
+            return 0;
+        else
+            return 1;
+        fi
+    else
+        return 1;
+    fi
 }
 
 # main
@@ -89,11 +127,11 @@ case "$1" in
         start
         stop;;
     "install" )
-        config;;
+        install;;
     "uninstall" )
         uninstall;;
     "config" )
-        config;;
+    	config;;
     "release_backlight" )
         release_backlight;;
     "lock_backlight" )
