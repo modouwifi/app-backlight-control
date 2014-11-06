@@ -1,0 +1,20 @@
+{
+    "current_strategy":
+    {
+        "id" : "current_strategy",
+        "name" : "当前屏幕休眠时间",
+        "value" : "未知",
+        "type" : 
+        {
+            "class" : "ENUM",
+            "item" : 
+            [
+                "3分钟",
+                "10分钟",
+                "30分钟",
+                "从不"
+            ],
+            "multiple" : false
+        }
+    }
+}

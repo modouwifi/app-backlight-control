@@ -10,8 +10,8 @@ APPS_CONFIG_DIR="/data/conf"
 LAUNCHER_CONFIG_DIR="$APPS_CONFIG_DIR/launcher/conf.d"
 LAUNCHER_CONFIG_FILE="$LAUNCHER_CONFIG_DIR/$PROGRAM_NAME.conf"
 
-ICON="appicon_backlight_normal.png"
-PRESSED_ICON="appicon_backlight_pressed.png"
+ICON="res/appicon_backlight_normal.png"
+PRESSED_ICON="res/appicon_backlight_pressed.png"
 
 PID_FILE="$CURWDIR/$PROGRAM_NAME.pid"
 PKILL_BIN="/usr/bin/pkill"
@@ -29,15 +29,66 @@ usage() {
 }
 
 start() {
-    $CUSTOM_BIN "$CUSTOM_CONFIG_FILE" &
-    [ "$!""XXX" != "XXX" ] && echo "$!" > $PID_FILE
+    echo "not implemented"
 }
 
 stop() {
-    if [ -f $PID_FILE ]; then
-        $PKILL_BIN "$CUSTOM_BIN $CUSTOM_CONFIG_FILE" -F "$PID_FILE"
-        $REMOVE $PID_FILE
-    fi
+    echo "not implemented"
+}
+
+get_current_backlight_strategy()
+{
+    # 检测之前的背光控制策略
+    local blhold=`cat /var/run/blhode`
+    local bltime=`nvram_get 2860 BLtime`
+    local idx=-1
+    local txt="未知"
+
+    if [ "$blhold" == "1" -o "$bltime" == "0" ] ; then
+        idx=3
+        txt="从不"
+    elif [ "$bltime" == "180" ] ; then
+        idx=0
+        txt="3分钟"
+    elif [ "$bltime" == "600" ] ; then
+        idx=1
+        txt="10分钟"
+    elif [ "$bltime" == "1800" ] ; then
+        idx=2
+        txt="30分钟"
+    fi    
+
+    current_strategy=$idx
+    current_strategy_txt=$txt
+}
+
+sync_strategy_to_datajson()
+{
+    get_current_backlight_strategy
+
+    json4sh.sh set $CURWDIR/conf/data.json "current_strategy" value $current_strategy_txt
+}
+
+set_strategy()
+{
+    # 修改了之背光控制的实现策略,之前通过lua调用，（等同于lock_backlight.sh，是通过开关控制blcontrol是否生效)，而其实可以通过给blcontrol传递时间间隔参数0来实现背光长亮，这样和自定义背光控制时间间隔的逻辑一致，更简单方便 --阿耀
+    local seconds=$1
+    local pid=`ps|grep blcontrol|grep -v grep|awk '{print $1}'`;
+
+    release_backlight.sh
+
+    nvram_set 2860 BLtime $seconds
+    kill $pid
+    /bin/blcontrol -t $seconds -s NULL &
+
+    sync_strategy_to_datajson
+}
+
+run() {
+    get_current_backlight_strategy
+    
+    # 启动背光控制的list
+    list -t "背光控制" -s $current_strategy -w $CURWDIR -c $CURWDIR/conf/list.conf &
 }
 
 install() 
@@ -46,70 +97,20 @@ install()
     echo "\"name\" :  \"$TITLE\"," >> "$PROGRAM_NAME.conf"
     echo "\"icon\" : \"$CURWDIR/$ICON\"," >> "$PROGRAM_NAME.conf"
     echo "\"iconPressed\" : \"$CURWDIR/$PRESSED_ICON\"," >> "$PROGRAM_NAME.conf"
-    echo "\"exec\" : \"$CURWDIR/init start\"," >> "$PROGRAM_NAME.conf"
+    echo "\"exec\" : \"$CURWDIR/init run\"," >> "$PROGRAM_NAME.conf"
     echo "\"msgNum\" : 4" >> "$PROGRAM_NAME.conf"
     echo "}" >> "$PROGRAM_NAME.conf"
 
     $INSTALL_BIN -d $LAUNCHER_CONFIG_DIR
-    $INSTALL_BIN "$PROGRAM_NAME.conf" "$LAUNCHER_CONFIG_FILE"
-    
-    code=`basename $CURWDIR`;
-    /bin/sed -ie "s/data\/apps\/backlight/data\/apps\/$code/g" $CURWDIR/custom.conf;
+    $INSTALL_BIN "$PROGRAM_NAME.conf" "$LAUNCHER_CONFIG_FILE"    
+
+    sync_strategy_to_datajson
 }
+
+
 
 uninstall() {
     $REMOVE "$LAUNCHER_CONFIG_FILE"
-}
-
-release_backlight() {
-    RC=$($LUA_BIN $LUA_SCRIPT_PATH sys_api.release_backlight)
-    echo -n $RC 
-
-    [ -f $CUSTOM_CONFIG_FILE ] && /bin/sed -ie "s/\"content\": \"屏幕长亮\"\,/\"content\": \"自动熄灭\"\,/g" $CUSTOM_CONFIG_FILE;
-    pid=`ps |grep custom|grep -v grep|awk '{print $1}'`;
-    kill -SIGUSR1 $pid;
-}
-
-lock_backlight() {
-    RC=$($LUA_BIN $LUA_SCRIPT_PATH sys_api.lock_backlight)
-    echo -n $RC 
-
-    [ -f $CUSTOM_CONFIG_FILE ] && /bin/sed -ie "s/\"content\": \"自动熄灭\"\,/\"content\": \"屏幕长亮\"\,/g" $CUSTOM_CONFIG_FILE;
-    pid=`ps |grep custom|grep -v grep|awk '{print $1}'`;
-    kill -SIGUSR1 $pid;
-}
-
-backlight_on() {
-    RC=$($LUA_BIN $LUA_SCRIPT_PATH sys_api.wakeup_backlight)
-    echo -n $RC
-
-    pid=`ps |grep custom|grep -v grep|awk '{print $1}'`;
-    kill -SIGUSR1 $pid;
-}
-
-backlight_off() {
-    echo -n '{"msg": "falilure", "code": -1}'
-}
-
-config()
-{
-    /bin/input-text "" "间隔时间（单位秒）" "$INTERVAL" 1 10;
-    sec=`cat $INTERVAL`;
-    line=`echo $sec|grep "[^0-9]"|wc -l`;
-    if [ $line -eq 0 ]; then
-        pid=`ps|grep blcontrol|grep -v grep|awk '{print $1}'`;
-        [ "$sec" != "" ] && nvram_set 2860 BLtime $sec;
-        res=$?;
-        if [ $res -eq 0 ]; then
-            kill $pid;
-            /bin/blcontrol -t $sec -s NULL &
-            return 0;
-        else
-            return 1;
-        fi
-    else
-        return 1;
-    fi
 }
 
 # main
@@ -123,6 +124,8 @@ case "$1" in
         start;;
     "stop" )
         stop;;
+    "run" )
+        run;;
     "restart" )
         start
         stop;;
@@ -132,14 +135,8 @@ case "$1" in
         uninstall;;
     "config" )
     	config;;
-    "release_backlight" )
-        release_backlight;;
-    "lock_backlight" )
-        lock_backlight;;
-    "backlight_on" )
-        backlight_on;;
-    "backlight_off" )
-        backlight_off;;
+    "set_strategy" )
+        set_strategy $2 ;;    
     * )
         usage ;;
 esac

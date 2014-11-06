@@ -1,0 +1,29 @@
+{
+    "interval-3min" : {
+        "id" : "interval-3min",
+        "is_sync" : "true",
+        "cmd" : "./init set_strategy 180",
+        "relative" : "true"
+    },
+
+   "interval-10min" : {
+       "id" : "interval-10min",
+       "is_sync" : "true",
+       "cmd" : "./init set_strategy 600"
+       "relative" : "true"
+   },
+
+    "interval-30min" : {
+       "id" : "interval-30min",
+       "is_sync" : "true",
+       "cmd" : "./init set_strategy 1800"
+       "relative" : "true"
+   },
+
+    "interval-never" : {
+       "id" : "interval-never",
+       "is_sync" : "true",
+       "cmd" : "./init set_strategy 0"
+       "relative" : "true"
+   }
+}
