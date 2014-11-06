@@ -2,7 +2,7 @@
     "main_page" : 
     {
         "id" : "main_page",
-        "name" : "背光控制",
+        "name" : "屏幕休眠时间设置",
         "type" : "main",
         "data" :
         {
