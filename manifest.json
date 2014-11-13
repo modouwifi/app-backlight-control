@@ -1,10 +1,11 @@
 {
   "package_id": "com.modouwifi.backlight-control",
-  "name": "屏幕休眠设置",
+  "name": "app-backlight-control",
+  "display_name" : "屏幕休眠设置",
   "author": "魔豆开发团队",
   "author_mail": "cs@mochui.net",
   "homepage": "www.modouwifi.com",
-  "version": "0.4.3",
+  "version": "0.4.4",
   "release_date": "2014.11.6",
   "icon": "./appicon_backlight_normal.png",
   "location": "internal",
