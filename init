@@ -88,7 +88,7 @@ run() {
     get_current_backlight_strategy
     
     # 启动背光控制的list
-    list -t "背光控制" -s $current_strategy -w $CURWDIR -c $CURWDIR/conf/list.conf &
+    $CURWDIR/list -t "背光控制" -s $current_strategy -w $CURWDIR -c $CURWDIR/conf/list.conf &
 }
 
 install() 

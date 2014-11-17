@@ -5,11 +5,11 @@
   "author": "魔豆开发团队",
   "author_mail": "cs@mochui.net",
   "homepage": "www.modouwifi.com",
-  "version": "0.4.6",
+  "version": "0.4.7",
   "release_date": "2014.11.6",
   "icon": "./appicon_backlight_normal.png",
   "location": "internal",
   "description": "使用此应用可以开启或关闭魔豆屏幕的背光自动熄灭功能",
   "instruction": "在魔豆路由器屏幕或者路由宝中可以方便快捷地设置背光休眠时间",
-  "os_version": "0.7.06"
+  "os_version": "0.6.06"
 }
