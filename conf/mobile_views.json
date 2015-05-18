@@ -2,13 +2,18 @@
     "main_page" : 
     {
         "id" : "main_page",
-        "name" : "屏幕休眠时间设置",
+        "name" : "屏幕设置",
         "type" : "main",
         "data" :
         {
-            "current_strategy" : 
+            "sleep_time" :
             {
-                "id" : "current_strategy",
+                "id" : "sleep_time",
+                "access" : "RO"
+            },
+            "brightness" :
+            {
+                "id" : "brightness",
                 "access" : "RO"
             }
         }
@@ -17,40 +22,30 @@
             "1" : 
             {
                 "index" : 1,
-                "text" : "屏幕休眠时间设置",
-                "type" : "MENU"
-                "items" : 
-                {
-                    "1" : 
-                    {
-                        "index" : 1,
-                        "text" : "3分钟",
-                        "type" : "COMMAND",
-                        "action" : "interval-3min"
-                    },
-                    "2" : 
-                    {
-                        "index" : 2,
-                        "text" : "10分钟",
-                        "type" : "COMMAND",
-                        "action" : "interval-10min"                    
-                    },
-                    "3" :
-                    {
-                        "index" : 3,
-                        "text" : "30分钟",
-                        "type" : "COMMAND",
-                        "action" : "interval-30min"
-                    },
-                    "4" :
-                    {
-                        "index" : 4,
-                        "text" : "从不",
-                        "type" : "COMMAND",
-                        "action" : "interval-never"
-                    }
-                }
+                "text" : "屏幕设置",
+                "type" : "VIEW"
+                "viewid" : "setting"
             }
-        }
+        },
+
+
     }
+
+
+    "setting" :
+        {
+                "id" : "setting",
+                "name" : "屏幕设置",
+                "type" : "sub",
+                "data" : {
+                       "sleep_time" : {
+                             "id" : "sleep_time",
+                             "access" : "RW"
+                       },
+                       "brightness" : {
+                             "id" : "brightness",
+                             "access" : "RW"
+                       }
+                }
+        }        
 }

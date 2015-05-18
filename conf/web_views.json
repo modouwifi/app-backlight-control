@@ -1,0 +1,13 @@
+{
+        "widgets":
+        [
+                {
+                        "id": "sleep_time"
+                        "access" : "RW"
+                },
+                {
+                        "id" : "brightness",
+                        "access" : "RW"
+                }
+        ]
+}

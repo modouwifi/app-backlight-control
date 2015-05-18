@@ -1,17 +1,21 @@
 #!/bin/sh
 
 CURWDIR="$(cd $(dirname $0) && pwd)"
-TITLE="背光控制"
+PWD=$CURWDIR
+TITLE="屏幕设置"
 PROGRAM_NAME="backlight-control"
 CUSTOM_BIN="/system/apps/tp/bin/custom"
 CUSTOM_CONFIG_FILE="$CURWDIR/custom.conf"
 
+TMP_FILE="/tmp/conf"
 APPS_CONFIG_DIR="/data/conf"
 LAUNCHER_CONFIG_DIR="$APPS_CONFIG_DIR/launcher/conf.d"
 LAUNCHER_CONFIG_FILE="$LAUNCHER_CONFIG_DIR/$PROGRAM_NAME.conf"
 
-ICON="res/appicon_backlight_normal.png"
-PRESSED_ICON="res/appicon_backlight_pressed.png"
+
+
+ICON="res/icon.png"
+PRESSED_ICON="res/icon_p.png"
 
 PID_FILE="$CURWDIR/$PROGRAM_NAME.pid"
 PKILL_BIN="/usr/bin/pkill"
@@ -20,7 +24,14 @@ REMOVE="/bin/rm -f"
 LUA_BIN="/system/bin/lua"
 LUA_SCRIPT_PATH="/system/share/lua/5.1/tp_entry.lua"
 
-INTERVAL="$CURWDIR/interval.conf";
+UCI_BACKLIGHT="modou.backlight"
+UCI_BRIGHTNESS="modou.backlight.brightness"
+UCI_SLEEP_TIME="modou.backlight.timeout"
+
+DEFAULT_BRIGHTNESS=100
+DEFAULT_SLEEP_TIME=180
+PROFILE="$PWD/conf/profile"
+OPTION_TEMPLATE="$PWD/conf/option.template"
 
 usage() {
     echo "ERROR: action missing"
@@ -36,78 +47,138 @@ stop() {
     echo "not implemented"
 }
 
-get_current_backlight_strategy()
+
+func_return_sleep_txt=
+sleep_time_2_sleep_txt()
 {
-    # 检测之前的背光控制策略
-    local blhold=`cat /var/run/blhode`
-    local bltime=`nvram_get 2860 BLtime`
-    local idx=-1
-    local txt="未知"
-
-    if [ "$blhold" == "1" -o "$bltime" == "0" ] ; then
-        idx=3
-        txt="从不"
-    elif [ "$bltime" == "180" ] ; then
-        idx=0
-        txt="3分钟"
-    elif [ "$bltime" == "600" ] ; then
-        idx=1
-        txt="10分钟"
-    elif [ "$bltime" == "1800" ] ; then
-        idx=2
-        txt="30分钟"
-    fi    
-
-    current_strategy=$idx
-    current_strategy_txt=$txt
+    local txt=
+    if [ "$1" == "0" ] ; then
+        func_return_sleep_txt="从不"
+    else
+        local m=
+        let "m=sleep_time/60"
+        func_return_sleep_txt=$m"分钟"
+    fi
 }
 
-sync_strategy_to_datajson()
+func_return_sleep_time=
+sleep_txt_2_sleep_time()
 {
-    get_current_backlight_strategy
+    case "$1" in 
+        "从不" )
+            func_return_sleep_time=0;;
+        "3分钟" )
+            func_return_sleep_time=180;;
+        "10分钟" )
+            func_return_sleep_time=600;;
+        "30分钟" )
+            func_return_sleep_time=1800;;
+        * )
+            func_return_sleep_time=0;;
+    esac
 
-    json4sh.sh set $CURWDIR/conf/data.json "current_strategy" value $current_strategy_txt
 }
 
-set_strategy()
+sync_config_from_uci()
 {
-    # 修改了之背光控制的实现策略,之前通过lua调用，（等同于lock_backlight.sh，是通过开关控制blcontrol是否生效)，而其实可以通过给blcontrol传递时间间隔参数0来实现背光长亮，这样和自定义背光控制时间间隔的逻辑一致，更简单方便 --阿耀
-    local seconds=$1
-    local pid=`ps|grep blcontrol|grep -v grep|awk '{print $1}'`;
+    local brightness=`uci get $UCI_BRIGHTNESS`
+    local sleep_time=`uci get $UCI_SLEEP_TIME`
+    
+    if [ "$brightness" == "" -o "$sleep_time" == "" ] ; then
+        uci set $UCI_BACKLIGHT=service
 
-    release_backlight.sh
+        brightness=$DEFAULT_BRIGHTNESS
+        sleep_time=$DEFAULT_SLEEP_TIME
 
-    nvram_set 2860 BLtime $seconds
-    kill $pid
-    /bin/blcontrol -t $seconds -s NULL &
+        uci set $UCI_BRIGHTNESS=$brightness
+        uci set $UCI_SLEEP_TIME=$sleep_time
+        uci commit modou
+    fi
 
-    sync_strategy_to_datajson
+    sleep_time_2_sleep_txt $sleep_time
+    local sleep_txt=$func_return_sleep_txt
+
+    json4sh.sh set $CURWDIR/conf/data.json "brightness" value $brightness    
+    json4sh.sh set $CURWDIR/conf/data.json "sleep_time" value $sleep_txt
+
+    save_to_profile $sleep_txt $brightness
+}
+
+save_to_profile()
+{
+    local sleep_txt=$1
+    local brightness=$2
+
+    rm $PROFILE
+
+    echo $sleep_txt > $PROFILE
+    echo $brightness >> $PROFILE
+}
+
+set_config()
+{
+    sync_config_from_data_json
+    
+}
+
+sync_config_from_data_json()
+{
+    local brightness=`json4sh.sh get $CURWDIR/conf/data.json "brightness" value`
+    local sleep_txt=`json4sh.sh get $CURWDIR/conf/data.json "sleep_time" value`
+
+    sleep_txt_2_sleep_time $sleep_txt
+    local sleep_time=$func_return_sleep_time
+
+    uci set $UCI_BRIGHTNESS=$brightness
+    uci set $UCI_SLEEP_TIME=$sleep_time
+    uci commit modou
+
+    save_to_profile $sleep_txt $brightness
+
+    blcontrol -b $brightness -t $sleep_time
+}
+
+sync_config_from_profile()
+{
+    local sleep_txt=`cat $PROFILE | head -n 1`
+    local brightness=`cat $PROFILE | tail -n 1`
+
+    sleep_txt_2_sleep_time $sleep_txt
+    local sleep_time=$func_return_sleep_time
+        
+    uci set $UCI_BRIGHTNESS=$brightness
+    uci set $UCI_SLEEP_TIME=$sleep_time
+    uci commit modou
+
+    json4sh.sh set $CURWDIR/conf/data.json "brightness" value $brightness
+    json4sh.sh set $CURWDIR/conf/data.json "sleep_time" value $sleep_txt
+
+    blcontrol -b $brightness -t $sleep_time
 }
 
 run() {
-    get_current_backlight_strategy
-    
-    # 启动背光控制的list
-    $CURWDIR/list -t "背光控制" -s $current_strategy -w $CURWDIR -c $CURWDIR/conf/list.conf &
+    $PWD/bin/generate-config-file-2 $OPTION_TEMPLATE $PROFILE
+    sync_config_from_profile
+    #custom $PWD/conf/custom.conf
 }
+
+
 
 install() 
 {
-    echo "{" > "$PROGRAM_NAME.conf"
-    echo "\"name\" :  \"$TITLE\"," >> "$PROGRAM_NAME.conf"
-    echo "\"icon\" : \"$CURWDIR/$ICON\"," >> "$PROGRAM_NAME.conf"
-    echo "\"iconPressed\" : \"$CURWDIR/$PRESSED_ICON\"," >> "$PROGRAM_NAME.conf"
-    echo "\"exec\" : \"$CURWDIR/init run\"," >> "$PROGRAM_NAME.conf"
-    echo "\"msgNum\" : 4" >> "$PROGRAM_NAME.conf"
-    echo "}" >> "$PROGRAM_NAME.conf"
+    echo "{" > "$TMP_FILE"
+    echo "\"name\" :  \"$TITLE\"," >> "$TMP_FILE"
+    echo "\"icon\" : \"$CURWDIR/$ICON\"," >> "$TMP_FILE"
+    echo "\"iconPressed\" : \"$CURWDIR/$PRESSED_ICON\"," >> "$TMP_FILE"
+    echo "\"exec\" : \"$CURWDIR/init run\"," >> "$TMP_FILE"
+    echo "\"msgNum\" : 4" >> "$TMP_FILE"
+    echo "}" >> "$TMP_FILE"
 
     $INSTALL_BIN -d $LAUNCHER_CONFIG_DIR
-    $INSTALL_BIN "$PROGRAM_NAME.conf" "$LAUNCHER_CONFIG_FILE"    
+    mv "$TMP_FILE" "$LAUNCHER_CONFIG_FILE"
 
-    sync_strategy_to_datajson
+    sync_config_from_uci
 }
-
-
 
 uninstall() {
     $REMOVE "$LAUNCHER_CONFIG_FILE"
@@ -135,8 +206,8 @@ case "$1" in
         uninstall;;
     "config" )
     	config;;
-    "set_strategy" )
-        set_strategy $2 ;;    
+    "set_config" )
+        set_config;;
     * )
         usage ;;
 esac

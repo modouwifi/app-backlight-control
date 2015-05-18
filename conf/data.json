@@ -1,13 +1,13 @@
 {
-    "current_strategy":
+    "sleep_time":
     {
-        "id" : "current_strategy",
-        "name" : "当前屏幕休眠时间",
-        "value" : "未知",
+        "id" : "sleep_time",
+        "name" : "屏幕休眠时间",
+        "value" : "3分钟",
         "type" : 
         {
             "class" : "ENUM",
-            "item" : 
+            "items" : 
             [
                 "3分钟",
                 "10分钟",
@@ -15,6 +15,29 @@
                 "从不"
             ],
             "multiple" : false
+        }
+    },
+    "brightness":
+    {
+        "id" : "brightness",
+        "name" : "屏幕亮度设置",
+        "value" : "100",
+        "type" : {
+               "class" : "ENUM",
+               "items" : 
+               [
+                "10",   
+                "20",
+                "30",
+                "40",
+                "50",
+                "60",
+                "70",
+                "80",
+                "90",
+                "100"
+               ],
+               "multiple" : false
         }
     }
 }
